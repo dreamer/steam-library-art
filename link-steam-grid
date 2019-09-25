@@ -1,0 +1,113 @@
+#!/usr/bin/python3
+
+# Copyright (c) 2019 Patryk Obara
+#
+# This software is provided 'as-is', without any express or implied
+# warranty. In no event will the authors be held liable for any damages
+# arising from the use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not
+#    claim that you wrote the original software. If you use this software
+#    in a product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
+
+# pylint: disable=missing-docstring
+# pylint: disable=invalid-name
+
+import os
+import sys
+import subprocess
+
+HOME = os.environ.get('HOME')
+DATA_HOME = os.environ.get('XDG_DATA_HOME') or \
+            os.path.expanduser('~/.local/share')
+
+
+def print_err(*value, sep=' ', end='\n', flush=True):
+    """Prints the values to stderr."""
+    print(*value, sep=sep, end=end, file=sys.stderr, flush=flush)
+
+
+def select_steam_dir():
+    candidates = [
+        (DATA_HOME, 'Steam'),
+        (HOME, '.steam', 'root'),
+        (HOME, '.steam', 'steam'),
+        (HOME, '.steam')
+    ]
+    for path in (os.path.join(*xs) for xs in candidates):
+        if os.path.isdir(path):
+            return path
+    return None
+
+
+def get_users_configs(steam_dir):
+    steam_dir = select_steam_dir()
+    assert steam_dir
+    userdata = os.path.join(steam_dir, 'userdata')
+    for user_id in os.listdir(userdata):
+        config_dir = os.path.join(userdata, user_id, 'config')
+        if os.path.isdir(config_dir):
+            yield config_dir
+
+
+def get_repo_grid_path():
+    root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'])
+    return os.path.join(root.decode('utf-8').strip(), 'grid')
+
+
+def main():
+
+    steam_dir = select_steam_dir()
+    if steam_dir is None:
+        print_err('Steam directory not found.')
+        sys.exit(1)
+
+    print_err('Using Steam dir:', steam_dir)
+
+    repo_grid_path = get_repo_grid_path()
+
+    for config_path in get_users_configs(steam_dir):
+        grid_path = os.path.join(config_path, 'grid')
+
+        if not os.path.exists(grid_path):
+            os.symlink(repo_grid_path, grid_path)
+            print_err('Created symlink:', grid_path, '->', repo_grid_path)
+            continue
+
+        if os.path.isfile(grid_path):
+            print_err('Skipped (grid is a file?):', grid_path)
+            continue
+
+        if os.path.islink(grid_path):
+            print_err("Skipped (it's a link already):", grid_path)
+            continue
+
+        if os.path.isdir(grid_path):
+            if os.listdir(grid_path):
+                # create a backup, then link
+                backup_path = grid_path + '.bak'
+                if os.path.exists(backup_path):
+                    print_err('Error: backup directory exists already:')
+                    print_err(backup_path)
+                    sys.exit(2)
+                os.rename(grid_path, backup_path)
+                print_err('Backed-up grid dir:', backup_path)
+                os.symlink(repo_grid_path, grid_path)
+                print_err('Created symlink:', grid_path, '->', repo_grid_path)
+            else:
+                # empty directory
+                os.rmdir(grid_path)
+                os.symlink(repo_grid_path, grid_path)
+                print_err('Created symlink:', grid_path, '->', repo_grid_path)
+
+
+if __name__ == "__main__":
+    main()
