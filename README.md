@@ -24,4 +24,4 @@ And restart Steam - all new covers will be picked up automatically.
 
 ### How can I contribute my cover art?
 
-GitHub's default pull-request workflow is broken when using [Git LFS](https://git-lfs.github.com/). We're figuring out the details - for now you can submit your covers on [#steam-library-art channel in Luxtorpeda Discord](https://discord.gg/8DC3tZ).
+GitHub's default pull-request workflow is broken when using [Git LFS](https://git-lfs.github.com/). We're figuring out the details - for now you can submit your covers on [#steam-library-art channel in Luxtorpeda Discord](https://discord.gg/dWTxE4S).
